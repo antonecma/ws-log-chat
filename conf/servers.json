@@ -1,5 +1,9 @@
 {
   "http" : {
     "port" : 8080
+  },
+  "ws" : {
+    "host" : "localhost",
+    "protocols" : null
   }
 }
