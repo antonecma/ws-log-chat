@@ -1,73 +1,51 @@
-const WebSocketServer = require('websocket').server;
-const http = require('http');
-const co = require('co');
-const path = require('path');
-const gloader = require('gloader');
+var WebSocketServer = require('websocket').server;
+var http = require('http');
 
-const nconf = gloader('nconf', 'file', ['servers', 'auth'], 'json', path.join(__dirname, './conf'));
+var server = http.createServer(function(request, response) {
+    console.log((new Date()) + ' Received request for ' + request.url);
+    response.writeHead(404);
+    response.end();
+});
+server.listen(8080, function() {
+    console.log((new Date()) + ' Server is listening on port 8080');
+});
 
+wsServer = new WebSocketServer({
+    httpServer: server,
+    // You should not use autoAcceptConnections for production
+    // applications, as it defeats all standard cross-origin protection
+    // facilities built into the protocol and the browser.  You should
+    // *always* verify the connection's origin and decide whether or not
+    // to accept it.
+    autoAcceptConnections: false
+});
 
-co(function* () {
-    const server = http.createServer((req, res) => {
-        console.log('client request for http server');
-        res.writeHead(404);
-        res.end();
-    });
+function originIsAllowed(origin) {
+    // put logic here to detect whether the specified origin is allowed.
+    return true;
+}
 
-    server.listen(nconf.use('servers').get('http:port'), () => {
-        console.log('http server is started');
-    });
+wsServer.on('request', function(request) {
+    if (!originIsAllowed(request.origin)) {
+        // Make sure we only accept requests from an allowed origin
+        request.reject();
+        console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
+        return;
+    }
 
-    const wsServer = new WebSocketServer({
-        httpServer : server,
-        autoAcceptConnections: false
-    });
-
-    const findUser = ({user, password}) => {
-        const clients = nconf.use('auth').get('clients');
-        const loginPassword = clients.find((client) => {
-            return (client.user == user && client.password == password);
-        });
-        return loginPassword;
-    };
-    const getAuthInfo = (headers) => {
-        const info = headers.auth;
-
-        let user = null;
-        let password =null;
-
-        if(info){
-            user = info.split(':')[0];
-            password = info.split(':')[1];
+    var connection = request.accept(null, null);
+    console.log((new Date()) + ' Connection accepted.');
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+            console.log('Received Message: ' + message.utf8Data);
+            connection.sendUTF(message.utf8Data);
         }
-        return {user, password};
-    };
-    const isAuthWSClient = (info) => {
-        if(findUser(getAuthInfo(info.httpRequest.headers))){
-            return true;
-        } else {
-            return false;
-        }
-
-    };
-
-    wsServer.on('request', (req) => {
-
-        if(isAuthWSClient(req)){
-            console.log('client is connected');
-            const connection = req.accept(null, null);
-            connection.sendUTF('Server : Hello user!');
-            connection.on('message', (message) => {
-                console.log(message.utf8Data);
-            });
-        } else {
-            req.reject();
+        else if (message.type === 'binary') {
+            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
+            connection.sendBytes(message.binaryData);
         }
     });
-})
-    .then((result) => {
-
-    })
-    .catch((err) => {
-        console.log(err);
+    connection.on('close', function(reasonCode, description) {
+        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
     });
+});

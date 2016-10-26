@@ -3,7 +3,7 @@
     "port" : 8080
   },
   "ws" : {
-    "host" : "localhost",
+    "host" : "127.0.0.1",
     "protocols" : null
   }
 }
