@@ -61,13 +61,38 @@ const deleteFile = (path) => {
 const existFile = (path) => {
     return new Promise((resolve, reject) => {
         fs.stat(path, (err, stat) => {
-            console.log(stat);
+
             if(err){
-                reject(err);
+                if(err.code === 'ENOENT') {
+                    resolve(false);
+                } else {
+                    reject(err);
+                }
             } else {
                 resolve(stat.isFile());
             }
         });
     });
 };
-module.exports = {saveToFile, readFromFile, deleteFile, existFile};
+/**
+ *
+ * @param {String} sourcePath - path of source file
+ * @param {String} destinationPath - path to save
+ * @returns {Promise}
+ * @resolve {undefined}
+ * @reject {Error} - error if copy is failed
+ */
+const copyFile = (sourcePath, destinationPath) => {
+    return new Promise((resolve, reject) => {
+        const rStream = fs.createReadStream(sourcePath);
+        const wStream = fs.createWriteStream(destinationPath);
+        wStream.on('finish', () => {
+            resolve();
+        });
+        wStream.on('error', (err) => { reject(err);});
+        rStream.on('error', (err) => { reject(err);});
+
+        fs.createReadStream(sourcePath).pipe(wStream);
+    });
+};
+module.exports = {saveToFile, readFromFile, deleteFile, existFile, copyFile};

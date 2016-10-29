@@ -6,7 +6,7 @@ const pFS = require('../helpers/p-save-file');
 const secure = require('../helpers/secure');
 
 
-describe('secure methods tests', () => {
+describe('secure helper', () => {
 
     it('should generate secure data(key, cert)', (done) => {
         co(function* () {
@@ -68,6 +68,35 @@ describe('secure methods tests', () => {
 
             isKeyFileExist.should.be.equal(false);
             isCertFileExist.should.be.equal(false);
+
+        }).then(done, done);
+    });
+
+    it('should delete secure data', (done) => {
+        co(function* () {
+            const securePath = secure.pathToSecureData = __dirname;
+            const keyPath = path.join(securePath, secure.keyFileName);
+            const certPath = path.join(securePath, secure.certFileName);
+            yield secure.updateServerSecureData();
+            yield secure.saveServerSecureData();
+            yield secure.deleteSecureData();
+
+            should.equal(null, secure.key);
+            should.equal(null, secure.cert);
+            should.equal(null, secure.ca);
+
+            const [isKeyFileExist, isCertFileExist] = yield Promise.all([
+                pFS.existFile(keyPath), pFS.existFile(certPath)
+            ]);
+
+            isKeyFileExist.should.be.equal(false);
+            isCertFileExist.should.be.equal(false);
+
+        }).then(done, done);
+    });
+
+    it('should load secure data from files', (done) => {
+        co(function* () {
 
         }).then(done, done);
     });
