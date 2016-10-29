@@ -12,6 +12,8 @@
     "websocket": "^1.0.23"
   },
   "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-mocha": "^3.0.1",
     "mocha": "^3.1.2",
     "should": "^11.1.1"
   },

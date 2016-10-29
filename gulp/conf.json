@@ -1,0 +1,6 @@
+{
+  "path" : {
+    "testsDir" : "/home/antonecma/projects/ws-log-chat/tests"
+  },
+  "testTimeout" : 300000
+}
