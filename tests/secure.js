@@ -32,11 +32,12 @@ describe('secure helper', () => {
 
     it('should save to file server secure data', (done) => {
         co(function* () {
-            const securePath = secure.pathToSecureData = __dirname;
+            const securePath = __dirname;
+            const keyPath = path.join(securePath, 'key');
+            const certPath = path.join(securePath, 'path');
+
             yield secure.updateServerSecureData();
-            yield secure.saveServerSecureData();
-            const keyPath = path.join(securePath, secure.keyFileName);
-            const certPath = path.join(securePath, secure.certFileName);
+            yield secure.saveServerSecureData(keyPath, certPath);
 
             const [key, cert] = yield Promise.all([
                 pFS.readFromFile(keyPath), pFS.readFromFile(certPath),
@@ -51,11 +52,11 @@ describe('secure helper', () => {
 
     it('should delete secure data', (done) => {
         co(function* () {
-            const securePath = secure.pathToSecureData = __dirname;
-            const keyPath = path.join(securePath, secure.keyFileName);
-            const certPath = path.join(securePath, secure.certFileName);
+            const securePath =  __dirname;
+            const keyPath = path.join(securePath, 'key');
+            const certPath = path.join(securePath, 'cert');
             yield secure.updateServerSecureData();
-            yield secure.saveServerSecureData();
+            yield secure.saveServerSecureData(keyPath, certPath);
             yield secure.deleteSecureData();
 
             should.equal(null, secure.key);
@@ -74,11 +75,11 @@ describe('secure helper', () => {
 
     it('should delete secure data', (done) => {
         co(function* () {
-            const securePath = secure.pathToSecureData = __dirname;
-            const keyPath = path.join(securePath, secure.keyFileName);
-            const certPath = path.join(securePath, secure.certFileName);
+            const securePath =  __dirname;
+            const keyPath = path.join(securePath, 'key');
+            const certPath = path.join(securePath, 'path');
             yield secure.updateServerSecureData();
-            yield secure.saveServerSecureData();
+            yield secure.saveServerSecureData(keyPath, certPath);
             yield secure.deleteSecureData();
 
             should.equal(null, secure.key);
@@ -97,7 +98,29 @@ describe('secure helper', () => {
 
     it('should load secure data from files', (done) => {
         co(function* () {
+            const securePath =  __dirname;
 
+            const keyPath = path.join(securePath, 'key');
+            const keyPathCopy = `${keyPath}.copy`;
+
+            const certPath = path.join(securePath, 'cert');
+            const certPathCopy = `${certPath}.copy`;
+
+            yield secure.updateServerSecureData();
+            yield secure.saveServerSecureData(keyPath, certPath);
+
+            const key = secure.key;
+            const cert = secure.cert;
+
+            yield Promise.all([pFS.copyFile(keyPath, keyPathCopy), pFS.copyFile(certPath, certPathCopy)]);
+
+            yield secure.deleteSecureData();
+            yield secure.loadSecureDataFromFile(keyPathCopy, certPathCopy);
+
+            secure.key.should.be.equal(key);
+            secure.cert.should.be.equal(cert);
+
+            yield Promise.all([pFS.deleteFile(keyPathCopy), pFS.deleteFile(certPathCopy)]);
         }).then(done, done);
     });
 });

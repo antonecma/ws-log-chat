@@ -7,7 +7,7 @@ describe('all test module', (done) => {
     const testFiles = fs.readdirSync(__dirname);
     const currentFileName = `${path.parse(__filename).name}.js`;
     testFiles.forEach((filename) => {
-        if(filename != currentFileName){
+        if(filename != currentFileName && path.parse(filename).ext === '.js'){
             require(`./${filename}`);
         }
     });

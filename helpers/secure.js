@@ -9,7 +9,8 @@ const pFS = require('./p-save-file');
 const secureMethods = {
     /**
      * Create private key and cert for server. Cert and key will be stored on disk
-     * @returns {{key: String cert: String }} - paths to cert and key
+     * @returns {Promise} - paths to cert and key
+     * @resolve {{key: String cert: String }} - paths to cert and key
      */
     generateServerSecureData(){
         return new Promise((resolve, reject) => {
@@ -36,19 +37,17 @@ const secureMethods = {
         });
     },
     /**
-     * Save secure data to files
+     * Save key and cert to disk
+     * @param {String} keyPath - path where private key data will be saved
+     * @param {String} certPath - path where public cert data will be saved
      * @returns {Promise}
      * @resolve {Object} - secureMethod object
      */
-    saveServerSecureData(){
+    saveServerSecureData(keyPath, certPath){
         return co.call(this, function* () {
-            const pathToSecure = this.pathToSecureData;
-            const [certPath, keyPath] = [
-                path.join(pathToSecure, this.certFileName),
-                path.join(pathToSecure, this.keyFileName)
-            ];
-
             yield Promise.all([pFS.saveToFile(certPath, this.cert), pFS.saveToFile(keyPath, this.key)]);
+            this.keyPath = keyPath;
+            this.certPath = certPath;
             return this;
         });
     },
@@ -59,16 +58,29 @@ const secureMethods = {
      */
     deleteSecureData(){
         return co.call(this, function* () {
-            const pathToSecure = this.pathToSecureData;
             yield Promise.all([
-                pFS.deleteFile(path.join(pathToSecure, this.certFileName)),
-                pFS.deleteFile(path.join(pathToSecure, this.keyFileName))
+                pFS.deleteFile(this.keyPath),
+                pFS.deleteFile(this.certPath)
             ]);
 
             this.cert = null;
             this.key = null;
             this.ca = null;
-
+            this.keyPath = null;
+            this.certPath = null;
+            return this;
+        });
+    },
+    loadSecureDataFromFile(pathToKey, pathToCert){
+        return co.call(this, function* () {
+            const [key, cert] = yield Promise.all([
+                pFS.readFromFile(pathToKey),
+                pFS.readFromFile(pathToCert)
+            ]);
+            this.key = key;
+            this.cert = cert;
+            this.keyPath = pathToKey;
+            this.certPath = pathToCert;
             return this;
         });
     }
@@ -77,9 +89,8 @@ const secureProperties = {
     cert : null,
     ca : null,
     key : null,
-    keyFileName : 'key',
-    certFileName : 'cert',
-    pathToSecureData : '.'
+    keyPath : './key',
+    certPath : './cert',
 };
 
 module.exports = (stampit.methods(secureMethods).props(secureProperties))();
