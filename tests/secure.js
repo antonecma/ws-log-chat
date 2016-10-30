@@ -73,29 +73,6 @@ describe('secure helper', () => {
         }).then(done, done);
     });
 
-    it('should delete secure data', (done) => {
-        co(function* () {
-            const securePath =  __dirname;
-            const keyPath = path.join(securePath, 'key');
-            const certPath = path.join(securePath, 'path');
-            yield secure.updateServerSecureData();
-            yield secure.saveServerSecureData(keyPath, certPath);
-            yield secure.deleteSecureData();
-
-            should.equal(null, secure.key);
-            should.equal(null, secure.cert);
-            should.equal(null, secure.ca);
-
-            const [isKeyFileExist, isCertFileExist] = yield Promise.all([
-                pFS.existFile(keyPath), pFS.existFile(certPath)
-            ]);
-
-            isKeyFileExist.should.be.equal(false);
-            isCertFileExist.should.be.equal(false);
-
-        }).then(done, done);
-    });
-
     it('should load secure data from files', (done) => {
         co(function* () {
             const securePath =  __dirname;
@@ -121,6 +98,35 @@ describe('secure helper', () => {
             secure.cert.should.be.equal(cert);
 
             yield Promise.all([pFS.deleteFile(keyPathCopy), pFS.deleteFile(certPathCopy)]);
+        }).then(done, done);
+    });
+
+    it('should load ca from files', (done) => {
+        co(function* () {
+
+            let [firstCaCert, secondCaCert] = yield Promise.all([
+                secure.generateServerSecureData(),
+                secure.generateServerSecureData()
+            ]);
+
+            firstCaCert = firstCaCert.cert;
+            secondCaCert = secondCaCert.cert;
+
+            const [firstCaPath, secondCaPath] = [path.join(__dirname, 'ca1.cert'), path.join(__dirname, 'ca2.cert')];
+
+            yield Promise.all([
+                pFS.saveToFile(firstCaPath, firstCaCert),
+                pFS.saveToFile(secondCaPath, secondCaCert)
+            ]);
+            yield secure.loadCA([firstCaPath, secondCaPath]);
+
+            secure.ca.should.containEql(firstCaCert);
+            secure.ca.should.containEql(secondCaCert);
+
+            yield Promise.all([
+                pFS.deleteFile(firstCaPath),
+                pFS.deleteFile(secondCaPath)
+            ]);
         }).then(done, done);
     });
 });

@@ -71,6 +71,13 @@ const secureMethods = {
             return this;
         });
     },
+    /**
+     * Loads cert and private key from file
+     * @param {String} pathToKey - path where private key are located
+     * @param {String} pathToCert - path where public cert are located
+     * @returns {Promise}
+     * @resolve {Object} secureMethods object
+     */
     loadSecureDataFromFile(pathToKey, pathToCert){
         return co.call(this, function* () {
             const [key, cert] = yield Promise.all([
@@ -83,6 +90,24 @@ const secureMethods = {
             this.certPath = pathToCert;
             return this;
         });
+    },
+    /**
+     * Loads ca from file into this.ca property
+     * @param {String[]} paths - array of path where ca certs is located
+     * @returns {Promise}
+     * @resolve {Object} secureMethods object
+     */
+    loadCA(paths){
+       return co.call(this, function* () {
+           const certRead = [];
+
+           for(const path of paths){
+               certRead.push(pFS.readFromFile(path));
+           }
+           this.ca = yield Promise.all(certRead);
+
+           return this;
+       });
     }
 };
 const secureProperties = {
