@@ -1,5 +1,6 @@
 'use strict';
 
+const https = require('https');
 const co = require('co');
 const path = require('path');
 const should = require('should');
@@ -17,7 +18,7 @@ describe.only('wss-server helper', () => {
     it('should create https server', (done) => {
         co(function* () {
             const wssPort = yield wssServer.getFreePortForServer();
-            yield wssServer.createHTTPS({});
+            yield wssServer.createHTTPS({port : wssPort});
             const httpsServer = wssServer.getHTTPSServer();
             httpsServer.should.not.be.null();
             httpsServer.should.be.instanceOf(https.Server);
