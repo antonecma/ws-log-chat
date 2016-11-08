@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "co": "^4.6.0",
+    "getport": "^0.1.0",
     "gloader": "^1.0.1",
     "nconf": "^0.8.4",
     "pem": "^1.8.3",

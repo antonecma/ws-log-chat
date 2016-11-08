@@ -3,7 +3,7 @@ const co = require('co');
 const path = require('path');
 const should = require('should');
 const pFS = require('../helpers/p-save-file');
-const secure = require('../helpers/secure');
+const secure = require('../helpers/secure')();
 
 
 describe('secure helper', () => {

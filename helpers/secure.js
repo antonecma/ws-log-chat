@@ -118,4 +118,4 @@ const secureProperties = {
     certPath : './cert',
 };
 
-module.exports = (stampit.methods(secureMethods).props(secureProperties))();
+module.exports = (stampit.methods(secureMethods).props(secureProperties));
