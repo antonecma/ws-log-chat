@@ -34,7 +34,7 @@ describe('secure helper', () => {
         co(function* () {
             const securePath = __dirname;
             const keyPath = path.join(securePath, 'key');
-            const certPath = path.join(securePath, 'path');
+            const certPath = path.join(securePath, 'cert');
 
             yield secure.updateServerSecureData();
             yield secure.saveServerSecureData(keyPath, certPath);
