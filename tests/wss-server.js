@@ -4,10 +4,11 @@ const https = require('https');
 const co = require('co');
 const path = require('path');
 const should = require('should');
+const socketio = require('socket.io');
 const pFS = require('../helpers/p-save-file');
 const wssServer = require('../helpers/wss-server')();
 
-describe.only('wss-server helper', () => {
+describe('wss-server helper', () => {
 
     it('should return free port for https server', (done) => {
         co(function* () {
@@ -15,6 +16,7 @@ describe.only('wss-server helper', () => {
             freePort.should.be.within(wssServer.minHTTPSPort, wssServer.maxHTTPSPort);
         }).then(done, done);
     });
+
     it('should create https server', (done) => {
         co(function* () {
 
@@ -42,7 +44,7 @@ describe.only('wss-server helper', () => {
                 pFS.saveToFile(secondCaPath, secondCaCert)
             ]);
 
-            //create wssServer
+            //create HTTPS Server
             yield wssServer.createHTTPS({caPaths : [firstCaPath, secondCaPath]});
 
             //asserts
@@ -56,5 +58,53 @@ describe.only('wss-server helper', () => {
                 pFS.deleteFile(firstCaPath), pFS.deleteFile(secondCaPath)
             ]);
         }).then(done, done);
+    });
+
+    it('should create wss server', (done) => {
+
+        co(function* () {
+            //generate key and cert for server
+            const securePath = __dirname;
+            const keyPath = path.join(securePath, 'key');
+            const certPath = path.join(securePath, 'cert');
+
+            yield wssServer.updateServerSecureData();
+            yield wssServer.saveServerSecureData(keyPath, certPath);
+
+            //generate ca files
+            let [firstCaCert, secondCaCert] = yield Promise.all([
+                wssServer.generateServerSecureData(),
+                wssServer.generateServerSecureData()
+            ]);
+
+            firstCaCert = firstCaCert.cert;
+            secondCaCert = secondCaCert.cert;
+
+            const [firstCaPath, secondCaPath] = [path.join(__dirname, 'ca1.cert'), path.join(__dirname, 'ca2.cert')];
+
+            yield Promise.all([
+                pFS.saveToFile(firstCaPath, firstCaCert),
+                pFS.saveToFile(secondCaPath, secondCaCert)
+            ]);
+
+            //create HTTPS Server
+            yield wssServer.createHTTPS({caPaths : [firstCaPath, secondCaPath]});
+
+            //create WSS Server
+            yield  wssServer.createWSSServer();
+
+            //asserts
+            const wsss = wssServer.getWSSServer();
+            wsss.should.not.be.null();
+            wsss.should.be.instanceOf(socketio);
+
+            //delete temporary files
+            yield Promise.all([
+                pFS.deleteFile(keyPath), pFS.deleteFile(certPath),
+                pFS.deleteFile(firstCaPath), pFS.deleteFile(secondCaPath)
+            ]);
+
+        }).then(done, done);
+
     });
 });

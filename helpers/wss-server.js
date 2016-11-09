@@ -7,6 +7,7 @@ const secure = require('./secure');
 const pFS = require('./p-save-file');
 const https = require('https');
 const getPort = require('getport');
+const socketio = require('socket.io');
 
 const wssServerMethods = {
     /**
@@ -48,8 +49,8 @@ const wssServerMethods = {
 const wssInitFunction  = (opts, {instance}) => {
 
     let httpsServer = null;
-    let pathToKey = null;
-    let pathToCert = null;
+    let wssServer = null;
+
     /**
      * Create new HTTPS Server instance
      * @param {String} host - domain name or ipv4 address of server
@@ -77,7 +78,9 @@ const wssInitFunction  = (opts, {instance}) => {
             const ca = yield Promise.all(caPaths.map((caPath) => pFS.readFromFile(caPath)));
 
             //add secure
-            httpsServer = https.createServer({key : this.key, cert : this.cert, ca : ca});
+            httpsServer = https.createServer({key : this.key, cert : this.cert, ca : ca,
+                requestCert : true,
+                rejectUnauthorized : true});
 
             //get new free port for server
             const freePort = yield this.getFreePortForServer();
@@ -100,43 +103,23 @@ const wssInitFunction  = (opts, {instance}) => {
         return httpsServer;
     };
     /**
-     * Returns path to private secure key
-     * @returns {String} path to key
+     * Returns WSS server instance
+     * @returns {Object} WSS server object
      */
-    instance.getPathToKey = () => {
-        return pathToKey;
+    instance.getWSSServer = () => {
+        return wssServer;
     };
     /**
-     * Set path where cert and key file are located now
-     * @param {String} keyPath - path to key
-     * @param {String} certPath - path to cert
+     * Creates wss serfer based on private https server
      * @returns {Promise}
      * @resolve {Object} wssServerObject
      */
-    instance.setSecurePath = ({keyPath, certPath}) => {
+    instance.createWSSServer = () => {
+
         return co.call(instance, function* () {
-            //check if files exists
-            const [keyExists, certExists] = Promise.all([pFS.existFile(keyPath), pFS.existFile(certPath)]);
-
-            if(keyExists && certExists){
-
-                pathToKey = keyPath;
-                pathToCert =  certPath;
-
-                return this;
-
-            } else {
-
-                throw new ReferenceError('private key or cert does not exist');
-            }
+            wssServer = socketio(this.getHTTPSServer());
+            return this;
         });
-    };
-    /**
-     * Returns path to public cert
-     * @returns {String} path to cert
-     */
-    instance.getPathToCert = () => {
-        return pathToCert;
     };
 };
 
