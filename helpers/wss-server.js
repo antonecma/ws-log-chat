@@ -117,6 +117,11 @@ const wssInitFunction  = (opts, {instance}) => {
     instance.createWSSServer = () => {
 
         return co.call(instance, function* () {
+            (this.getHTTPSServer()).on('request', (request, response) => {
+                console.log('https server request event');
+                response.writeHead(200);
+                response.end();
+            });
             wssServer = socketio(this.getHTTPSServer());
             return this;
         });
