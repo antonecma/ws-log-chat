@@ -50,11 +50,11 @@ const wssInitFunction  = (opts, {instance}) => {
 
     let httpsServer = null;
     let wssServer = null;
-
+    let sockets = null;
     /**
      * Create new HTTPS Server instance
      * @param {String} host - domain name or ipv4 address of server
-     * @param {<String | Buffer>[]} caPaths - array of paths where trusted certs are located
+     * @param {<String} caPaths - array of paths where trusted certs are located
      * @returns {Promise}
      * @resolve {Object} wssServerObject
      */
@@ -64,16 +64,17 @@ const wssInitFunction  = (opts, {instance}) => {
 
             //if httpsServer was created before, then just close old instance of it
             if(this.getHTTPSServer()) {
-                yield new Promise((resolve, reject) => {
-                    httpsServer.close((err) => {
-                        err ? reject(err) : resolve(err);
-                    });
+
+                httpsServer.close((err) => {
+                    if(err){
+                        throw new Error(err);
+                    }
                 });
             }
-            //load secure data from files, if not loaded before
-            if(!this.key && !this.cert){
-                yield this.loadSecureDataFromFile(this.keyPath, this.certPath);
-            }
+            //load secure data from files
+
+            yield this.loadSecureDataFromFile(this.keyPath, this.certPath);
+
             //read ca
             const ca = yield Promise.all(caPaths.map((caPath) => pFS.readFromFile(caPath)));
 
@@ -110,21 +111,57 @@ const wssInitFunction  = (opts, {instance}) => {
         return wssServer;
     };
     /**
-     * Creates wss serfer based on private https server
+     * Creates wss server based on private https server
+     * @param {String} host - domain name or ipv4 address of server
+     * @param {String[]} caPaths - array of paths where trusted certs are located
      * @returns {Promise}
      * @resolve {Object} wssServerObject
      */
-    instance.createWSSServer = () => {
+    instance.createWSSServer = ({host = 'localhost', caPaths} = {}) => {
 
         return co.call(instance, function* () {
+            //create HTTPS Server
+            yield this.createHTTPS({host, caPaths});
+
             (this.getHTTPSServer()).on('request', (request, response) => {
-                console.log('https server request event');
                 response.writeHead(200);
                 response.end();
             });
+
+            //close all sockets, if exists
+            const oldClients = this.getClients();
+
+            if(oldClients){
+                oldClients.forEach((client) => {
+                    client.disconnect((err) => {
+                        if (err) {
+                            throw new Error(err);
+                        }
+                    });
+                });
+                sockets = null;
+            }
+
             wssServer = socketio(this.getHTTPSServer());
+
+            wssServer.on('connection', (socket) => {
+
+                if(!sockets){
+                    sockets = [];
+                }
+
+                sockets.push(socket);
+            });
+
             return this;
         });
+    };
+    /**
+     * Return private client sockets array
+     * @returns {<Socket>[]} - array of client sockets
+     */
+    instance.getClients = () => {
+        return sockets;
     };
 };
 

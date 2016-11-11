@@ -1,5 +1,7 @@
 const co = require('co');
 const fs = require('fs');
+const pathUtil = require('path');
+const tmp = require('tmp');
 
 /**
  * Save file in promise mode
@@ -95,4 +97,12 @@ const copyFile = (sourcePath, destinationPath) => {
         fs.createReadStream(sourcePath).pipe(wStream);
     });
 };
-module.exports = {saveToFile, readFromFile, deleteFile, existFile, copyFile};
+
+const generateUniqFileName = (dir, {template = 'tmp-XXXXXX'} = {}) => {
+    return new Promise((resolve, reject) => {
+        tmp.tmpName({template}, (err, path) => {
+            err ? reject(err) : resolve(pathUtil.join(dir,path));
+        });
+    });
+};
+module.exports = {saveToFile, readFromFile, deleteFile, existFile, copyFile, generateUniqFileName};
