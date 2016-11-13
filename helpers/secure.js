@@ -37,6 +37,13 @@ const secureMethods = {
         });
     },
     /**
+     * Just alias to @see updateServerSecureData
+     * @returns {*|Promise}
+     */
+    updateSecureData(){
+        return this.updateServerSecureData();
+    },
+    /**
      * Save key and cert to disk
      * @param {String} keyPath - path where private key data will be saved
      * @param {String} certPath - path where public cert data will be saved
@@ -50,6 +57,15 @@ const secureMethods = {
             this.certPath = certPath;
             return this;
         });
+    },
+    /**
+     * Just link to @see saveServerSecureData
+     * @param {String} keyPath - path where private key data will be saved
+     * @param {String} certPath - path where public cert data will be saved
+     * @returns {*|Promise}
+     */
+    saveSecureData(keyPath, certPath){
+        return this.saveServerSecureData(keyPath, certPath);
     },
     /**
      * Delete key and cert file, and set to 'null' cert, key, ca

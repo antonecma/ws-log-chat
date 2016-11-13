@@ -22,6 +22,15 @@ const wssServerMethods = {
         return {address, port};
     },
     /**
+     * Return current url of https server
+     * @returns {String} - url of https server
+     */
+    getServerUrl(){
+        const {address, port} = this.getServerAddress();
+
+        return `https://${address}:${port}`;
+    },
+    /**
      * Get free port for server between minHTTPSPort and maxHTTPSPort value
      * @returns {Promise}
      * @resolve {Number} - free port
