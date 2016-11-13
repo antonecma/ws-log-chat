@@ -129,6 +129,10 @@ const wssInitFunction  = (opts, {instance}) => {
     instance.createWSSServer = ({host = 'localhost', caPaths} = {}) => {
 
         return co.call(instance, function* () {
+
+            if(this.wssServer){
+                this.wssServer.close();
+            }
             //create HTTPS Server
             yield this.createHTTPS({host, caPaths});
 
@@ -142,11 +146,7 @@ const wssInitFunction  = (opts, {instance}) => {
 
             if(oldClients){
                 oldClients.forEach((client) => {
-                    client.disconnect((err) => {
-                        if (err) {
-                            throw new Error(err);
-                        }
-                    });
+                    client.disconnect(true);
                 });
                 sockets = null;
             }

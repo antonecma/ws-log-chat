@@ -94,4 +94,37 @@ describe('wss-client helper', () => {
         }).then(done, done);
     });
 
+    it('should delete socket if it disconnected', (done) => {
+        co(function* () {
+            //create files for clients secure data
+            const wssSockets = wssClients();
+
+            //load secure data to all clients
+            yield wssSockets.loadSecureDataFromFile(serverKeyPath, serverCertPath);
+            yield wssSockets.loadCA([serverCertPath]);
+
+
+            //start wss server
+            yield wssServer.createWSSServer({caPaths : [serverCertPath]});
+
+            //create 4 clients
+            yield Promise.all([
+                wssSockets.create(wssServer.getServerUrl()), wssSockets.create(wssServer.getServerUrl()),
+                wssSockets.create(wssServer.getServerUrl()), wssSockets.create(wssServer.getServerUrl())
+            ]);
+
+            let wssClientsArray = wssSockets.getClients();
+
+            wssClientsArray.length.should.be.equal(4);
+
+            //disconnect all clients
+            yield wssServer.createWSSServer({caPaths : [serverCertPath]});
+
+            wssClientsArray = wssSockets.getClients();
+
+            wssClientsArray.length.should.be.equal(0);
+
+        }).then(done, done);
+    });
+
 });

@@ -27,11 +27,17 @@ const wssClientMethods = {
 
             yield new Promise((resolve, reject) => {
                 socket.on('connect', () => {
+                    console.log(`${socket.id} is connected`);
                     this.addClient(socket);
                     resolve();
                 });
                 socket.on('connect_error', (err) => {
                     reject('Web socket connection is rejected');
+                });
+
+                socket.on('disconnect', () => {
+                    console.log(`socket is disconnected`);
+                    this.deleteDisconnectedClients(socket);
                 });
             });
 
@@ -41,7 +47,7 @@ const wssClientMethods = {
 };
 
 const wssClientProperties = {
-    reconnectAttempt : 1
+    reconnectAttempt : 0
 };
 
 const wssClientInitFunction  = (opts, {instance}) => {
@@ -66,6 +72,15 @@ const wssClientInitFunction  = (opts, {instance}) => {
      */
     instance.getClients = () => {
         return clients;
+    };
+    /**
+     * Delete socket which disconnected
+     * @param {Object} socket - socket to delete
+     * @returns {wssClientObject} current wssClientObject
+     */
+    instance.deleteDisconnectedClients = (socket) => {
+        clients.splice(clients.indexOf(socket), 1);
+        return this;
     };
 };
 
