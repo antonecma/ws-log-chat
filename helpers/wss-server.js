@@ -75,11 +75,11 @@ const wssInitFunction  = (opts, {instance}) => {
 
             yield this.loadSecureDataFromFile(this.keyPath, this.certPath);
 
-            //read ca
-            const ca = yield Promise.all(caPaths.map((caPath) => pFS.readFromFile(caPath)));
+            //load ca
+            yield this.loadCA(caPaths);
 
             //add secure
-            httpsServer = https.createServer({key : this.key, cert : this.cert, ca : ca,
+            httpsServer = https.createServer({key : this.key, cert : this.cert, ca : this.ca,
                 requestCert : true,
                 rejectUnauthorized : true});
 

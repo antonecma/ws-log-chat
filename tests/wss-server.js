@@ -285,4 +285,64 @@ describe('wss-server helper', () => {
         }).then(done, done);
 
     });
+
+    it.skip('should remove clients when it disconnected', (done) => {
+
+        co(function* () {
+            //generate key and cert for server
+            const keyPath = yield pFS.generateUniqFileName(__dirname);
+            const certPath = yield pFS.generateUniqFileName(__dirname);
+
+            yield wssServer.updateServerSecureData();
+            yield wssServer.saveServerSecureData(keyPath, certPath);
+
+            //generate ca files
+            let [{cert: firstCaCert, key : firstCaKey}, {cert : secondCaCert, key : secondCaKey}] = yield Promise.all([
+                wssServer.generateServerSecureData(),
+                wssServer.generateServerSecureData()
+            ]);
+
+            const [firstCaPath, secondCaPath] = yield Promise.all([
+                pFS.generateUniqFileName(__dirname), pFS.generateUniqFileName(__dirname)
+            ]);
+
+            yield Promise.all([
+                pFS.saveToFile(firstCaPath, firstCaCert),
+                pFS.saveToFile(secondCaPath, secondCaCert)
+            ]);
+
+            //create WSS Server
+            yield  wssServer.createWSSServer({caPaths : [firstCaPath, secondCaPath]});
+
+            //make authorized websocket request
+            const {address : httpsServerAddress, port : httpsServerPort} = wssServer.getServerAddress();
+            const httpsServerUrl = `https://${httpsServerAddress}:${httpsServerPort}`;
+
+            const wssSocket = socketioClient(httpsServerUrl, { key : firstCaKey, cert : firstCaCert});
+            //set reconnection attempts to 1
+            wssSocket.io.reconnectionAttempts(1);
+
+            yield new Promise((resolve, reject) => {
+                wssSocket.on('connect', () => {
+                    resolve('Web socket connection is established');
+                });
+                wssSocket.on('connect_error', (err) => {
+                    reject('Web socket connection is rejected');
+                });
+            });
+
+            //asserts
+            const clientSokets = wssServer.getClients();
+
+            clientSokets.length.should.be.equal(1);
+            clientSokets[0].should.have.property('id');
+
+            //delete temporary files
+            yield Promise.all([
+                pFS.deleteFile(keyPath), pFS.deleteFile(certPath),
+                pFS.deleteFile(firstCaPath), pFS.deleteFile(secondCaPath)
+            ]);
+        }).then(done, done);
+
+    });
 });
