@@ -8,7 +8,7 @@ const socketio = require('socket.io');
 const socketioClient = require('socket.io-client');
 const pFS = require('../helpers/p-save-file');
 const wssServer = require('../helpers/wss-server')();
-
+const wssClients = require('../helpers/wss-client');
 describe('wss-server helper', () => {
 
     it('should return free port for https server', (done) => {
@@ -254,8 +254,7 @@ describe('wss-server helper', () => {
             yield  wssServer.createWSSServer({caPaths : [firstCaPath, secondCaPath]});
 
             //make authorized websocket request
-            const {address : httpsServerAddress, port : httpsServerPort} = wssServer.getServerAddress();
-            const httpsServerUrl = `https://${httpsServerAddress}:${httpsServerPort}`;
+            const httpsServerUrl = wssServer.getServerUrl();
 
             const wssSocket = socketioClient(httpsServerUrl, { key : firstCaKey, cert : firstCaCert});
             //set reconnection attempts to 1
@@ -286,7 +285,7 @@ describe('wss-server helper', () => {
 
     });
 
-    it.skip('should remove clients when it disconnected', (done) => {
+    it('should remove clients when it disconnected', (done) => {
 
         co(function* () {
             //generate key and cert for server
@@ -296,51 +295,38 @@ describe('wss-server helper', () => {
             yield wssServer.updateServerSecureData();
             yield wssServer.saveServerSecureData(keyPath, certPath);
 
-            //generate ca files
-            let [{cert: firstCaCert, key : firstCaKey}, {cert : secondCaCert, key : secondCaKey}] = yield Promise.all([
-                wssServer.generateServerSecureData(),
-                wssServer.generateServerSecureData()
-            ]);
-
-            const [firstCaPath, secondCaPath] = yield Promise.all([
-                pFS.generateUniqFileName(__dirname), pFS.generateUniqFileName(__dirname)
-            ]);
-
-            yield Promise.all([
-                pFS.saveToFile(firstCaPath, firstCaCert),
-                pFS.saveToFile(secondCaPath, secondCaCert)
-            ]);
-
             //create WSS Server
-            yield  wssServer.createWSSServer({caPaths : [firstCaPath, secondCaPath]});
+            yield  wssServer.createWSSServer({caPaths : [certPath]});
 
-            //make authorized websocket request
-            const {address : httpsServerAddress, port : httpsServerPort} = wssServer.getServerAddress();
-            const httpsServerUrl = `https://${httpsServerAddress}:${httpsServerPort}`;
+            //create client socket
+            const wssSockets = wssClients();
 
-            const wssSocket = socketioClient(httpsServerUrl, { key : firstCaKey, cert : firstCaCert});
-            //set reconnection attempts to 1
-            wssSocket.io.reconnectionAttempts(1);
+            yield wssSockets.loadSecureDataFromFile(keyPath, certPath);
+            yield wssSockets.loadCA([certPath]);
 
-            yield new Promise((resolve, reject) => {
-                wssSocket.on('connect', () => {
-                    resolve('Web socket connection is established');
-                });
-                wssSocket.on('connect_error', (err) => {
-                    reject('Web socket connection is rejected');
-                });
-            });
+            yield wssSockets.create(wssServer.getServerUrl());
+            yield wssSockets.create(wssServer.getServerUrl());
+            yield wssSockets.create(wssServer.getServerUrl());
 
             //asserts
-            const clientSokets = wssServer.getClients();
+            let clientSockets = wssServer.getClients();
 
-            clientSokets.length.should.be.equal(1);
-            clientSokets[0].should.have.property('id');
+            clientSockets.length.should.be.equal(3);
 
+            //disconnect client socket
+            (wssSockets.getClients()[0]).disconnect();
+
+            //wait for a while, for closing socket connection
+            yield new Promise((resolve) => {
+                setTimeout(resolve, 1000);
+            });
+
+            clientSockets = wssServer.getClients();
+
+            clientSockets.length.should.be.equal(2);
             //delete temporary files
             yield Promise.all([
-                pFS.deleteFile(keyPath), pFS.deleteFile(certPath),
-                pFS.deleteFile(firstCaPath), pFS.deleteFile(secondCaPath)
+                pFS.deleteFile(keyPath), pFS.deleteFile(certPath)
             ]);
         }).then(done, done);
 

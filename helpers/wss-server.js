@@ -160,10 +160,23 @@ const wssInitFunction  = (opts, {instance}) => {
                 }
 
                 sockets.push(socket);
+
+                socket.on('disconnect', () => {
+                    this.deleteDisconnectedSocket(socket);
+                });
             });
 
             return this;
         });
+    };
+    /**
+     * Delete socket which disconnected
+     * @param {Object} socket - socket to delete
+     * @returns {wssServerObject} current wssServerObject
+     */
+    instance.deleteDisconnectedSocket = (socket) => {
+        sockets.splice(sockets.indexOf(socket, 1));
+        return this;
     };
     /**
      * Return private client sockets array
