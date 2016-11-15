@@ -11,6 +11,21 @@ const socketio = require('socket.io');
 
 const wssServerMethods = {
     /**
+     * Add listener to all clients
+     * @param {Function} hook - listener
+     * @returns {wssServerMethods}
+     */
+    addHookToMessage(hook){
+
+        const clients = this.getClients();
+
+        clients.forEach((client) => {
+            client.on('message', hook);
+        });
+
+        return this;
+    },
+    /**
      *  Returns current socket address of https server (without family)
      * @returns {{address: String, port: Number}} - info about server address
      */
@@ -52,7 +67,20 @@ const wssServerMethods = {
 
             return freePort;
         });
+    },
+    /**
+     * Add function to execute when even will be fired
+     * @param {String} event - event
+     * @param {Function} method - function that will be invoked
+     * @resolve {Object} wssServerObject
+     */
+    addServerMiddleware(event, method){
+        const wssServer = this.getWSSServer();
+        (this.getServerMiddleware()).push({event : event, method : method});
+        wssServer.on(event, method);
+        return this;
     }
+
 };
 
 const wssInitFunction  = (opts, {instance}) => {
@@ -60,6 +88,8 @@ const wssInitFunction  = (opts, {instance}) => {
     let httpsServer = null;
     let wssServer = null;
     let sockets = null;
+    let clientsMiddleware = null;
+    let serverMiddleware = null;
     /**
      * Create new HTTPS Server instance
      * @param {String} host - domain name or ipv4 address of server
@@ -164,6 +194,10 @@ const wssInitFunction  = (opts, {instance}) => {
                 socket.on('disconnect', () => {
                     this.deleteDisconnectedSocket(socket);
                 });
+
+                socket.on('message', (msg) => {
+                    console.log(`${socket.id} say : ${msg}`);
+                })
             });
 
             return this;
@@ -185,6 +219,18 @@ const wssInitFunction  = (opts, {instance}) => {
     instance.getClients = () => {
         return sockets;
     };
+    /**
+     * Return private server middleware functions array
+     * @returns {<Function>[]} - array of middleware
+     */
+    instance.getServerMiddleware = () => {
+
+        if(!serverMiddleware){
+            serverMiddleware = [];
+        }
+        return serverMiddleware;
+    };
+
 };
 
 const wssServerProperties = {

@@ -9,6 +9,8 @@ const socketioClient = require('socket.io-client');
 const pFS = require('../helpers/p-save-file');
 const wssServer = require('../helpers/wss-server')();
 const wssClients = require('../helpers/wss-client');
+const pWait = require('../helpers/p-wait');
+
 describe('wss-server helper', () => {
 
     it('should return free port for https server', (done) => {
@@ -328,6 +330,51 @@ describe('wss-server helper', () => {
             yield Promise.all([
                 pFS.deleteFile(keyPath), pFS.deleteFile(certPath)
             ]);
+        }).then(done, done);
+
+    });
+
+    it('should add middleware that will be invoked when event emit events', (done) => {
+
+        co(function* () {
+            //generate key and cert for server
+            const keyPath = yield pFS.generateUniqFileName(__dirname);
+            const certPath = yield pFS.generateUniqFileName(__dirname);
+
+            yield wssServer.updateServerSecureData();
+            yield wssServer.saveServerSecureData(keyPath, certPath);
+
+            //create WSS Server
+            yield  wssServer.createWSSServer({caPaths : [certPath]});
+
+            //methods
+            const increment = (incrementObj) => {
+                incrementObj.value += 1;
+            };
+            //event
+            const event = 'connection';
+            //temporary object
+            const incrementObj = {value : 0};
+
+            //add server Middleware
+            wssServer.addServerMiddleware(event, increment.bind(null, incrementObj));
+
+            //create client socket
+            const wssSockets = wssClients();
+
+            yield wssSockets.loadSecureDataFromFile(keyPath, certPath);
+            yield wssSockets.loadCA([certPath]);
+
+            yield wssSockets.create(wssServer.getServerUrl());
+
+            //assets
+            incrementObj.value.should.be.equal(1);
+
+            //delete temporary files
+            yield Promise.all([
+                pFS.deleteFile(keyPath), pFS.deleteFile(certPath)
+            ]);
+
         }).then(done, done);
 
     });
