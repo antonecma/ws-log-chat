@@ -334,7 +334,7 @@ describe('wss-server helper', () => {
 
     });
 
-    it('should add middleware that will be invoked when event emit events', (done) => {
+    it('should add middleware to server that will be invoked when event emit events', (done) => {
 
         co(function* () {
             //generate key and cert for server
@@ -367,6 +367,56 @@ describe('wss-server helper', () => {
 
             yield wssSockets.create(wssServer.getServerUrl());
 
+            //assets
+            incrementObj.value.should.be.equal(1);
+
+            //delete temporary files
+            yield Promise.all([
+                pFS.deleteFile(keyPath), pFS.deleteFile(certPath)
+            ]);
+
+        }).then(done, done);
+
+    });
+
+    it('should add middleware to client that will be invoked when event emit events', (done) => {
+
+        co(function* () {
+            //generate key and cert for server
+            const keyPath = yield pFS.generateUniqFileName(__dirname);
+            const certPath = yield pFS.generateUniqFileName(__dirname);
+
+            yield wssServer.updateServerSecureData();
+            yield wssServer.saveServerSecureData(keyPath, certPath);
+
+            //create WSS Server
+            yield  wssServer.createWSSServer({caPaths : [certPath]});
+
+            //methods
+            const increment = (incrementObj) => {
+                incrementObj.value += 1;
+            };
+            //event
+            const event = 'event';
+            //temporary object
+            const incrementObj = {value : 0};
+
+            //add server Middleware
+            wssServer.addClientsMiddleware(event, increment.bind(null, incrementObj));
+
+            //create client socket
+            const wssSockets = wssClients();
+
+            yield wssSockets.loadSecureDataFromFile(keyPath, certPath);
+            yield wssSockets.loadCA([certPath]);
+
+            yield wssSockets.create(wssServer.getServerUrl());
+            //send event to server
+            const wssClient = wssSockets.getClients()[0];
+            wssClient.emit(event, {});
+
+            //wait 1 sec
+            yield pWait(1000);
             //assets
             incrementObj.value.should.be.equal(1);
 

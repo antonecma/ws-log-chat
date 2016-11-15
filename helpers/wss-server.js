@@ -11,21 +11,6 @@ const socketio = require('socket.io');
 
 const wssServerMethods = {
     /**
-     * Add listener to all clients
-     * @param {Function} hook - listener
-     * @returns {wssServerMethods}
-     */
-    addHookToMessage(hook){
-
-        const clients = this.getClients();
-
-        clients.forEach((client) => {
-            client.on('message', hook);
-        });
-
-        return this;
-    },
-    /**
      *  Returns current socket address of https server (without family)
      * @returns {{address: String, port: Number}} - info about server address
      */
@@ -78,6 +63,37 @@ const wssServerMethods = {
         const wssServer = this.getWSSServer();
         (this.getServerMiddleware()).push({event : event, method : method});
         wssServer.on(event, method);
+        return this;
+    },
+    /**
+     * Add function to execute to all clients when even will be fired
+     * @param {String} event - event
+     * @param {Function} method - function that will be invoked
+     * @resolve {Object} wssServerObject
+     */
+    addClientsMiddleware(event, method){
+
+        //add middleware to storage
+        (this.getClientsMiddleware()).push({event : event, method : method});
+
+        //add listener to all clients
+        (this.getClients()).forEach((client) => client.on(event, method));
+
+        return this;
+    },
+    /**
+     * Add all existing middleware to client
+     * @param {Object} socket - socket of connected client
+     * @returns {wssServerMethods}
+     */
+    addMiddlewareToClient(socket){
+
+        const allMiddleware = this.getClientsMiddleware();
+
+        allMiddleware.forEach((middleware) => {
+            socket.on(middleware.event, middleware.method);
+        });
+
         return this;
     }
 
@@ -191,13 +207,11 @@ const wssInitFunction  = (opts, {instance}) => {
 
                 sockets.push(socket);
 
-                socket.on('disconnect', () => {
+                socket.once('disconnect', () => {
                     this.deleteDisconnectedSocket(socket);
                 });
 
-                socket.on('message', (msg) => {
-                    console.log(`${socket.id} say : ${msg}`);
-                })
+                this.addMiddlewareToClient(socket);
             });
 
             return this;
@@ -217,6 +231,9 @@ const wssInitFunction  = (opts, {instance}) => {
      * @returns {<Socket>[]} - array of client sockets
      */
     instance.getClients = () => {
+        if(!sockets) {
+            sockets = [];
+        }
         return sockets;
     };
     /**
@@ -229,6 +246,17 @@ const wssInitFunction  = (opts, {instance}) => {
             serverMiddleware = [];
         }
         return serverMiddleware;
+    };
+    /**
+     * Return private clients middleware functions array
+     * @returns {<Function>[]} - array of middleware
+     */
+    instance.getClientsMiddleware = () => {
+
+        if(!clientsMiddleware){
+            clientsMiddleware = [];
+        }
+        return clientsMiddleware;
     };
 
 };
